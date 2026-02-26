@@ -151,5 +151,9 @@ npm test
 ---
 
 ## License
+## Proof of Work
 
+
+
+![TracVote UI](Screenshot_20260226_170612_Chrome.jpg)
 MIT — Fork of [Trac-Systems/intercom](https://github.com/Trac-Systems/intercom)
