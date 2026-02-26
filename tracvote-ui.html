@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TracVote — P2P Voting on Intercom</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:    #0d0d0d;
+  --paper:  #f2efe8;
+  --teal:   #00b894;
+  --teal2:  #00cba3;
+  --red:    #c0392b;
+  --amber:  #d68910;
+  --steel:  #4a4a4a;
+  --rule:   #c8c4bb;
+  --rule2:  #a8a49b;
+  --col:    8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Subtle halftone texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 12px 12px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── MASTHEAD ── */
+.masthead {
+  position: relative;
+  z-index: 10;
+  border-bottom: 4px solid var(--ink);
+  padding: 0 32px;
+  background: var(--paper);
+}
+
+.masthead-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.masthead-meta {
+  font-size: 10px;
+  color: var(--steel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.masthead-network {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--teal);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.masthead-title {
+  text-align: center;
+  padding: 12px 0 10px;
+}
+
+.masthead-wordmark {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 72px;
+  font-weight: 900;
+  letter-spacing: -2px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.masthead-wordmark span { color: var(--teal); }
+
+.masthead-sub {
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--steel);
+  margin-top: 2px;
+}
+
+.masthead-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.stat-row {
+  display: flex;
+  gap: 24px;
+}
+
+.stat-item {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--steel);
+}
+
+.stat-item strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ── LAYOUT ── */
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 0;
+}
+
+.main-col {
+  border-right: 2px solid var(--ink);
+  padding-right: 28px;
+}
+
+.side-col {
+  padding-left: 24px;
+}
+
+/* ── SECTION HEADS ── */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.section-head h2 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.section-kicker {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--teal);
+  font-weight: 500;
+  border-left: 2px solid var(--teal);
+  padding-left: 6px;
+}
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--steel);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+}
+
+.tab-btn.active {
+  color: var(--ink);
+  border-bottom-color: var(--teal);
+}
+
+.tab-btn:hover:not(.active) { color: var(--ink); }
+
+/* ── POLL CARDS ── */
+.poll-list { display: flex; flex-direction: column; gap: 0; }
+
+.poll-card {
+  border-bottom: 1px solid var(--rule);
+  padding: 18px 0;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: start;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.poll-card:hover { background: rgba(0,184,148,0.04); }
+.poll-card:hover .poll-arrow { opacity: 1; }
+.poll-card.selected { background: rgba(0,184,148,0.07); }
+
+.poll-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--rule2);
+  line-height: 1;
+  min-width: 36px;
+  text-align: right;
+  padding-top: 2px;
+}
+
+.poll-body { flex: 1; }
+
+.poll-type-chip {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--teal);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.poll-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.poll-options-preview {
+  font-size: 11px;
+  color: var(--steel);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.poll-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--steel);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.meta-votes { color: var(--teal); font-weight: 500; }
+
+.poll-status {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1.5px solid;
+}
+
+.status-open   { color: var(--teal);  border-color: var(--teal);  }
+.status-closed { color: var(--steel); border-color: var(--rule2); }
+.status-tallied{ color: var(--amber); border-color: var(--amber); }
+
+.poll-arrow {
+  font-size: 18px;
+  color: var(--rule2);
+  opacity: 0;
+  transition: opacity 0.15s;
+  align-self: center;
+}
+
+/* ── DETAIL VIEW ── */
+.detail-view { display: none; }
+.detail-view.show { display: block; }
+
+.detail-kicker {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--teal);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-headline {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 12px;
+}
+
+.detail-byline {
+  font-size: 10px;
+  color: var(--steel);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.detail-desc {
+  font-size: 13px;
+  color: var(--steel);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  border-left: 3px solid var(--rule);
+  padding-left: 12px;
+}
+
+/* ── VOTING UI ── */
+.vote-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+
+.vote-option {
+  border: 1.5px solid var(--rule);
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.12s;
+  position: relative;
+  overflow: hidden;
+}
+
+.vote-option:hover { border-color: var(--teal); }
+
+.vote-option.selected {
+  border-color: var(--teal);
+  background: rgba(0,184,148,0.06);
+}
+
+.vote-option.selected::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--teal);
+}
+
+.option-selector {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--rule2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.option-selector.circle { border-radius: 50%; }
+.vote-option.selected .option-selector {
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
+.option-check {
+  color: white;
+  font-size: 9px;
+  display: none;
+}
+.vote-option.selected .option-check { display: block; }
+
+.option-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.option-id {
+  font-size: 9px;
+  color: var(--rule2);
+  margin-left: auto;
+}
+
+/* ── TALLY BARS ── */
+.tally-section { margin-top: 20px; }
+
+.tally-row { margin-bottom: 14px; }
+
+.tally-label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.tally-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.winner-crown { color: var(--amber); font-size: 12px; }
+
+.tally-pct {
+  font-size: 12px;
+  color: var(--steel);
+}
+
+.tally-track {
+  height: 8px;
+  background: var(--rule);
+  position: relative;
+}
+
+.tally-fill {
+  height: 100%;
+  background: var(--teal);
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+
+.tally-fill.winner { background: var(--ink); }
+
+.tally-count {
+  font-size: 10px;
+  color: var(--steel);
+  margin-top: 2px;
+  text-align: right;
+}
+
+/* ── ACTIONS ── */
+.action-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.btn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn-primary:hover { background: var(--teal); }
+.btn-primary:disabled { background: var(--rule); color: var(--rule2); cursor: not-allowed; }
+
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+}
+.btn-outline:hover { border-color: var(--teal); color: var(--teal); }
+
+.btn-back {
+  background: transparent;
+  border: none;
+  color: var(--steel);
+  font-size: 12px;
+  padding: 0;
+  margin-bottom: 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-back:hover { color: var(--teal); }
+
+/* ── SIDE PANEL ── */
+.side-section { margin-bottom: 28px; }
+
+.side-head {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+
+/* ── CREATE POLL FORM ── */
+.form-row { margin-bottom: 12px; }
+
+.form-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--steel);
+  display: block;
+  margin-bottom: 4px;
+}
+
+input[type=text], input[type=number], textarea, select {
+  width: 100%;
+  background: white;
+  border: 1.5px solid var(--rule);
+  padding: 8px 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+  -webkit-appearance: none;
+  transition: border-color 0.12s;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--teal); }
+textarea { resize: vertical; min-height: 60px; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.type-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.type-pill {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--rule);
+  cursor: pointer;
+  color: var(--steel);
+  background: white;
+  transition: all 0.12s;
+}
+.type-pill.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+
+/* ── ACTIVITY LOG ── */
+.log-feed {
+  font-size: 11px;
+  line-height: 1.7;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-entry { display: flex; gap: 6px; align-items: baseline; }
+.log-t { color: var(--rule2); flex-shrink: 0; font-size: 10px; }
+.log-c-vote  { color: var(--teal); }
+.log-c-poll  { color: var(--amber); }
+.log-c-close { color: var(--red); }
+.log-c-net   { color: var(--steel); }
+
+/* ── NETWORK BOX ── */
+.net-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.net-cell {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.net-cell:nth-child(odd) { border-right: 1px solid var(--rule); padding-right: 10px; }
+.net-cell:nth-child(even) { padding-left: 10px; }
+
+.net-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--teal);
+}
+
+.net-key {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--steel);
+  margin-top: 2px;
+}
+
+/* ── TOAST ── */
+.toast-area {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 1000;
+}
+
+.toast {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toastIn 0.25s ease;
+  white-space: nowrap;
+}
+
+@keyframes toastIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.toast-bar { width: 4px; height: 100%; background: var(--teal); position: absolute; left: 0; top: 0; bottom: 0; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule2); }
+
+/* ── VOTE CONFIRM ── */
+.voted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,184,148,0.1);
+  border: 1.5px solid var(--teal);
+  color: var(--teal);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+}
+
+@media(max-width:880px){
+  .container { grid-template-columns: 1fr; }
+  .main-col { border-right: none; padding-right: 0; }
+  .side-col { padding-left: 0; border-top: 2px solid var(--ink); padding-top: 24px; margin-top: 24px; }
+  .masthead-wordmark { font-size: 48px; }
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<header class="masthead">
+  <div class="masthead-top">
+    <div class="masthead-meta">Trac Network · Intercom Fork · Vol. I</div>
+    <div class="masthead-network">
+      <div class="live-dot"></div>
+      0000tracvote · 14 peers
+    </div>
+  </div>
+  <div class="masthead-title">
+    <div class="masthead-wordmark">Trac<span>Vote</span></div>
+    <div class="masthead-sub">Peer-to-peer verifiable polling on Intercom</div>
+  </div>
+  <div class="masthead-bottom">
+    <div class="stat-row">
+      <div class="stat-item">Open polls: <strong id="stat-open">0</strong></div>
+      <div class="stat-item">Total votes cast: <strong id="stat-votes">0</strong></div>
+      <div class="stat-item">Polls closed today: <strong id="stat-closed">0</strong></div>
+    </div>
+    <div class="masthead-meta" id="clock"></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- MAIN COLUMN -->
+  <div class="main-col">
+
+    <!-- BROWSE LIST -->
+    <div id="view-list">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="setTab('open')">Open</button>
+        <button class="tab-btn" onclick="setTab('closed')">Closed</button>
+        <button class="tab-btn" onclick="setTab('all')">All</button>
+      </div>
+      <div class="poll-list" id="poll-list"></div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="view-detail" class="detail-view">
+      <button class="btn-back" onclick="backToList()">← Back to polls</button>
+
+      <div class="detail-kicker">
+        <span id="d-type-chip"></span>
+        <span id="d-status-chip"></span>
+      </div>
+      <div class="detail-headline" id="d-title"></div>
+      <div class="detail-byline" id="d-byline"></div>
+      <div class="detail-desc" id="d-desc"></div>
+
+      <!-- Vote UI (open polls) -->
+      <div id="d-vote-section">
+        <div class="section-head" style="margin-bottom:12px;">
+          <div class="section-kicker">Cast your vote</div>
+        </div>
+        <div class="vote-options" id="d-options"></div>
+        <div id="d-voted-msg" style="display:none;margin-bottom:12px;">
+          <span class="voted-badge">✓ Vote recorded on-chain</span>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary" id="d-vote-btn" onclick="submitVote()">Submit Vote</button>
+          <button class="btn btn-outline" onclick="backToList()">Back</button>
+        </div>
+      </div>
+
+      <!-- Tally (closed/tallied) -->
+      <div id="d-tally-section" style="display:none;">
+        <div class="section-head" style="margin-bottom:12px;">
+          <div class="section-kicker">Results</div>
+          <h2 id="d-tally-voters"></h2>
+        </div>
+        <div class="tally-section" id="d-tally-rows"></div>
+        <div class="action-row">
+          <button class="btn btn-outline" onclick="backToList()">Back</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SIDE COLUMN -->
+  <div class="side-col">
+
+    <!-- Create poll -->
+    <div class="side-section">
+      <div class="side-head">Create Poll</div>
+
+      <div class="form-row">
+        <label class="form-label">Question</label>
+        <input type="text" id="f-title" placeholder="What should we decide?">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Description (optional)</label>
+        <textarea id="f-desc" placeholder="Context for voters..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Options (one per line)</label>
+        <textarea id="f-options" placeholder="Option A&#10;Option B&#10;Option C" style="min-height:72px;"></textarea>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Poll type</label>
+        <div class="type-pills" id="type-pills">
+          <div class="type-pill active" data-type="single_choice" onclick="selectType(this)">Single</div>
+          <div class="type-pill" data-type="multi_choice"  onclick="selectType(this)">Multi</div>
+          <div class="type-pill" data-type="approval"      onclick="selectType(this)">Approval</div>
+          <div class="type-pill" data-type="ranked_choice" onclick="selectType(this)">Ranked</div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="form-row">
+          <label class="form-label">Duration (days)</label>
+          <input type="number" id="f-days" value="7" min="1">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Quorum</label>
+          <input type="number" id="f-quorum" value="0" min="0">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="createPoll()">
+        Broadcast Poll →
+      </button>
+    </div>
+
+    <!-- Activity -->
+    <div class="side-section">
+      <div class="side-head">Network Activity</div>
+      <div class="log-feed" id="log-feed"></div>
+    </div>
+
+    <!-- Network -->
+    <div class="side-section">
+      <div class="side-head">Peer Status</div>
+      <div class="net-grid">
+        <div class="net-cell">
+          <div class="net-val" id="n-peers">14</div>
+          <div class="net-key">DHT Peers</div>
+        </div>
+        <div class="net-cell">
+          <div class="net-val" id="n-sc">4</div>
+          <div class="net-key">Channels</div>
+        </div>
+        <div class="net-cell">
+          <div class="net-val" id="n-polls">0</div>
+          <div class="net-key">Polls Seen</div>
+        </div>
+        <div class="net-cell">
+          <div class="net-val" id="n-votes">0</div>
+          <div class="net-key">Votes Cast</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--steel);">
+        Store: <strong>voter1</strong> · 
+        Pubkey: <strong style="color:var(--teal)">a1b2c3…f9e0</strong>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-area" id="toast-area"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {
+  polls: [],
+  activeTab: 'open',
+  selectedId: null,
+  selectedChoices: [],
+  votedPolls: new Set(),
+  pollType: 'single_choice',
+  totalVotesGlobal: 0,
+  closedToday: 2,
+}
+
+const nowSec = () => Math.floor(Date.now() / 1000)
+
+// ─── Seed data ────────────────────────────────────────────────────────────────
+const seeds = [
+  {
+    poll_id: crypto.randomUUID(),
+    title: 'Should TracVote support quadratic voting?',
+    description: 'Governance decision on adding quadratic voting as a new poll_type in the protocol. Quadratic voting allows voters to express preference intensity.',
+    options: [{id:'0',label:'Yes — add it'},{id:'1',label:'No — keep it simple'},{id:'2',label:'Yes, but later'}],
+    poll_type: 'single_choice',
+    creator_pubkey: 'governance-peer-hex',
+    ends_unix: nowSec() + 86400 * 4,
+    state: 'open',
+    votes: [
+      {voter_pubkey:'p1',choices:['0'],ts:1},{voter_pubkey:'p2',choices:['0'],ts:2},
+      {voter_pubkey:'p3',choices:['2'],ts:3},{voter_pubkey:'p4',choices:['0'],ts:4},
+      {voter_pubkey:'p5',choices:['1'],ts:5},{voter_pubkey:'p6',choices:['0'],ts:6},
+    ],
+  },
+  {
+    poll_id: crypto.randomUUID(),
+    title: 'Rank priorities for next Intercom release',
+    description: 'Help the core team prioritise the next development cycle. Your ranking will be tallied using the Borda count method.',
+    options: [{id:'0',label:'Performance'},{id:'1',label:'New Features'},{id:'2',label:'Documentation'},{id:'3',label:'Security'}],
+    poll_type: 'ranked_choice',
+    creator_pubkey: 'core-team-hex',
+    ends_unix: nowSec() + 86400 * 6,
+    state: 'open',
+    votes: [
+      {voter_pubkey:'p1',choices:['3','0','1','2'],ts:1},
+      {voter_pubkey:'p2',choices:['0','3','2','1'],ts:2},
+      {voter_pubkey:'p3',choices:['3','1','0','2'],ts:3},
+    ],
+  },
+  {
+    poll_id: crypto.randomUUID(),
+    title: 'Which networks for TracVote settlement?',
+    description: 'Multi-select: choose all networks where TracVote should support on-chain vote anchoring.',
+    options: [{id:'0',label:'Trac Network'},{id:'1',label:'Bitcoin Lightning'},{id:'2',label:'Solana'},{id:'3',label:'Ethereum'}],
+    poll_type: 'multi_choice',
+    creator_pubkey: 'community-peer-hex',
+    ends_unix: nowSec() + 86400 * 2,
+    state: 'open',
+    votes: [
+      {voter_pubkey:'p1',choices:['0','1'],ts:1},{voter_pubkey:'p2',choices:['0','2'],ts:2},
+      {voter_pubkey:'p3',choices:['0','1','2'],ts:3},{voter_pubkey:'p4',choices:['0'],ts:4},
+    ],
+  },
+  {
+    poll_id: crypto.randomUUID(),
+    title: 'Should the Intercom rendezvous channel be renamed?',
+    description: 'The current name 0000intercom was chosen for simplicity. This vote decides if a more descriptive name should be adopted.',
+    options: [{id:'0',label:'Keep 0000intercom'},{id:'1',label:'Rename to trac-main'},{id:'2',label:'Use a hash-based name'}],
+    poll_type: 'single_choice',
+    creator_pubkey: 'protocol-peer-hex',
+    ends_unix: nowSec() - 3600, // already ended
+    state: 'tallied',
+    votes: [
+      {voter_pubkey:'p1',choices:['0'],ts:1},{voter_pubkey:'p2',choices:['0'],ts:2},
+      {voter_pubkey:'p3',choices:['0'],ts:3},{voter_pubkey:'p4',choices:['1'],ts:4},
+      {voter_pubkey:'p5',choices:['2'],ts:5},{voter_pubkey:'p6',choices:['0'],ts:6},
+      {voter_pubkey:'p7',choices:['1'],ts:7},{voter_pubkey:'p8',choices:['0'],ts:8},
+    ],
+  },
+]
+
+seeds.forEach(p => { state.polls.push(p); state.totalVotesGlobal += p.votes.length })
+
+// ─── Tally engine ─────────────────────────────────────────────────────────────
+function computeTally(poll) {
+  const tally = {}
+  poll.options.forEach(o => tally[o.id] = 0)
+
+  const deduped = new Map()
+  for (const v of poll.votes) {
+    deduped.set(v.voter_pubkey || `anon:${v.ts}`, v)
+  }
+  const valid = [...deduped.values()]
+
+  for (const vote of valid) {
+    if (poll.poll_type === 'ranked_choice') {
+      const n = poll.options.length
+      vote.choices.forEach((id, rank) => { if (tally[id] !== undefined) tally[id] += (n - 1 - rank) })
+    } else {
+      for (const id of vote.choices) { if (tally[id] !== undefined) tally[id]++ }
+    }
+  }
+
+  const maxScore = Math.max(...Object.values(tally))
+  const winnerIds = Object.entries(tally).filter(([,s]) => s === maxScore && maxScore > 0).map(([id]) => id)
+  return { tally, totalVoters: valid.length, winnerIds }
+}
+
+// ─── Render list ──────────────────────────────────────────────────────────────
+function renderList() {
+  const el = document.getElementById('poll-list')
+  el.innerHTML = ''
+
+  const filtered = state.polls.filter(p => {
+    if (state.activeTab === 'open')   return p.state === 'open' && p.ends_unix > nowSec()
+    if (state.activeTab === 'closed') return p.state === 'tallied' || p.ends_unix <= nowSec()
+    return true
+  })
+
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:32px 0;color:var(--rule2);font-size:12px;text-transform:uppercase;letter-spacing:1px;">No polls in this category</div>'
+    return
+  }
+
+  filtered.forEach((poll, i) => {
+    const isOpen = poll.state === 'open' && poll.ends_unix > nowSec()
+    const daysLeft = Math.max(0, Math.ceil((poll.ends_unix - nowSec()) / 86400))
+    const stateLabel = isOpen ? 'open' : (poll.state === 'tallied' ? 'tallied' : 'closed')
+    const stateClass = isOpen ? 'status-open' : (poll.state === 'tallied' ? 'status-tallied' : 'status-closed')
+    const typeLabels = { single_choice:'Single', multi_choice:'Multi', approval:'Approval', ranked_choice:'Ranked' }
+
+    const card = document.createElement('div')
+    card.className = 'poll-card'
+    card.innerHTML = `
+      <div class="poll-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="poll-body">
+        <div class="poll-type-chip">${typeLabels[poll.poll_type] || poll.poll_type} Choice</div>
+        <div class="poll-title">${poll.title}</div>
+        <div class="poll-options-preview">${poll.options.map(o => o.label).join(' · ')}</div>
+        <div class="poll-meta">
+          <span class="meta-votes">${poll.votes.length} vote${poll.votes.length!==1?'s':''}</span>
+          ${isOpen ? `<span>${daysLeft}d remaining</span>` : '<span>Voting closed</span>'}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <span class="poll-status ${stateClass}">${stateLabel}</span>
+        <span class="poll-arrow">→</span>
+      </div>
+    `
+    card.onclick = () => openDetail(poll.poll_id)
+    el.appendChild(card)
+  })
+
+  updateStats()
+}
+
+// ─── Detail view ──────────────────────────────────────────────────────────────
+function openDetail(id) {
+  const poll = state.polls.find(p => p.poll_id === id)
+  if (!poll) return
+  state.selectedId = id
+  state.selectedChoices = []
+
+  const isOpen = poll.state === 'open' && poll.ends_unix > nowSec()
+  const typeLabels = { single_choice:'Single Choice', multi_choice:'Multi Choice', approval:'Approval Vote', ranked_choice:'Ranked Choice' }
+  const endsDate = new Date(poll.ends_unix * 1000).toLocaleDateString('en', { year:'numeric', month:'long', day:'numeric' })
+
+  document.getElementById('d-type-chip').textContent = typeLabels[poll.poll_type] || poll.poll_type
+  document.getElementById('d-title').textContent = poll.title
+  document.getElementById('d-byline').textContent = `Creator: ${poll.creator_pubkey.substring(0,12)}…  ·  ${isOpen ? `Closes ${endsDate}` : `Closed ${endsDate}`}  ·  ${poll.votes.length} votes cast`
+  document.getElementById('d-desc').textContent = poll.description || 'No description provided.'
+
+  const statusChip = document.getElementById('d-status-chip')
+  if (isOpen) { statusChip.innerHTML = '<span class="poll-status status-open">Open</span>' }
+  else if (poll.state === 'tallied') { statusChip.innerHTML = '<span class="poll-status status-tallied">Tallied</span>' }
+  else { statusChip.innerHTML = '<span class="poll-status status-closed">Closed</span>' }
+
+  if (isOpen && !state.votedPolls.has(id)) {
+    document.getElementById('d-vote-section').style.display = 'block'
+    document.getElementById('d-tally-section').style.display = 'none'
+    document.getElementById('d-voted-msg').style.display = 'none'
+    document.getElementById('d-vote-btn').disabled = false
+    renderVoteOptions(poll)
+  } else if (isOpen && state.votedPolls.has(id)) {
+    document.getElementById('d-vote-section').style.display = 'block'
+    document.getElementById('d-tally-section').style.display = 'none'
+    document.getElementById('d-voted-msg').style.display = 'block'
+    document.getElementById('d-vote-btn').disabled = true
+    renderVoteOptions(poll)
+  } else {
+    document.getElementById('d-vote-section').style.display = 'none'
+    document.getElementById('d-tally-section').style.display = 'block'
+    renderTally(poll)
+  }
+
+  document.getElementById('view-list').style.display = 'none'
+  document.getElementById('view-detail').classList.add('show')
+}
+
+function renderVoteOptions(poll) {
+  const el = document.getElementById('d-options')
+  const isMulti = poll.poll_type === 'multi_choice' || poll.poll_type === 'approval'
+  const isRanked = poll.poll_type === 'ranked_choice'
+  el.innerHTML = ''
+
+  if (isRanked) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--steel);margin-bottom:8px;">Click options in your preferred order (1st = highest priority)</div>'
+  }
+
+  poll.options.forEach(opt => {
+    const div = document.createElement('div')
+    div.className = 'vote-option'
+    div.dataset.id = opt.id
+    const selectorClass = isMulti ? '' : 'circle'
+    div.innerHTML = `
+      <div class="option-selector ${selectorClass}"><span class="option-check">✓</span></div>
+      <div class="option-label">${opt.label}</div>
+      ${isRanked ? `<div class="option-id" id="rank-${opt.id}"></div>` : `<div class="option-id">#${opt.id}</div>`}
+    `
+    div.onclick = () => toggleOption(opt.id, poll.poll_type)
+    el.appendChild(div)
+  })
+}
+
+function toggleOption(optId, pollType) {
+  const isMulti   = pollType === 'multi_choice' || pollType === 'approval'
+  const isRanked  = pollType === 'ranked_choice'
+
+  if (isRanked) {
+    const idx = state.selectedChoices.indexOf(optId)
+    if (idx >= 0) {
+      state.selectedChoices.splice(idx, 1)
+    } else {
+      state.selectedChoices.push(optId)
+    }
+  } else if (isMulti) {
+    const idx = state.selectedChoices.indexOf(optId)
+    if (idx >= 0) state.selectedChoices.splice(idx, 1)
+    else state.selectedChoices.push(optId)
+  } else {
+    state.selectedChoices = [optId]
+  }
+
+  // Update UI
+  document.querySelectorAll('.vote-option').forEach(el => {
+    const id = el.dataset.id
+    const selected = state.selectedChoices.includes(id)
+    el.classList.toggle('selected', selected)
+    if (isRanked) {
+      const rankEl = el.querySelector(`#rank-${id}`)
+      if (rankEl) {
+        const rank = state.selectedChoices.indexOf(id)
+        rankEl.textContent = selected ? `#${rank+1}` : ''
+      }
+    }
+  })
+}
+
+function renderTally(poll) {
+  const { tally, totalVoters, winnerIds } = computeTally(poll)
+  const isRanked = poll.poll_type === 'ranked_choice'
+  const maxScore = Math.max(...Object.values(tally))
+
+  document.getElementById('d-tally-voters').textContent = `${totalVoters} voter${totalVoters!==1?'s':''}`
+
+  const el = document.getElementById('d-tally-rows')
+  el.innerHTML = ''
+
+  // Sort by score desc
+  const sorted = [...poll.options].sort((a,b) => (tally[b.id]||0) - (tally[a.id]||0))
+
+  sorted.forEach(opt => {
+    const score = tally[opt.id] || 0
+    const pct   = maxScore > 0 ? Math.round(score / maxScore * 100) : 0
+    const votePct = totalVoters > 0 && !isRanked ? Math.round(score / totalVoters * 100) : pct
+    const isWinner = winnerIds.includes(opt.id)
+
+    const row = document.createElement('div')
+    row.className = 'tally-row'
+    row.innerHTML = `
+      <div class="tally-label-row">
+        <div class="tally-label">
+          ${isWinner ? '<span class="winner-crown">★</span>' : ''}
+          ${opt.label}
+        </div>
+        <div class="tally-pct">${votePct}%</div>
+      </div>
+      <div class="tally-track">
+        <div class="tally-fill ${isWinner ? 'winner':''}" style="width:0%" data-pct="${pct}"></div>
+      </div>
+      <div class="tally-count">${score} ${isRanked ? 'pts' : `vote${score!==1?'s':''}`}</div>
+    `
+    el.appendChild(row)
+  })
+
+  // Animate bars
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.tally-fill').forEach(bar => {
+        bar.style.width = bar.dataset.pct + '%'
+      })
+    })
+  })
+}
+
+function submitVote() {
+  const poll = state.polls.find(p => p.poll_id === state.selectedId)
+  if (!poll) return
+  if (state.selectedChoices.length === 0) { toast('Select at least one option', 'var(--red)'); return }
+  if (poll.poll_type === 'ranked_choice' && state.selectedChoices.length !== poll.options.length) {
+    toast(`Rank all ${poll.options.length} options`, 'var(--amber)'); return
+  }
+
+  // Record vote
+  poll.votes.push({ voter_pubkey: 'local-voter', choices: [...state.selectedChoices], ts: nowSec() })
+  state.votedPolls.add(state.selectedId)
+  state.totalVotesGlobal++
+
+  document.getElementById('d-voted-msg').style.display = 'block'
+  document.getElementById('d-vote-btn').disabled = true
+
+  const labels = state.selectedChoices.map(id => poll.options.find(o => o.id === id)?.label || id)
+  addLog(`Vote cast: "${labels.join(', ')}"`, 'vote')
+  toast(`✓ Vote broadcast to vote:${poll.poll_id.substring(0,8)}…`, 'var(--teal)')
+  updateStats()
+}
+
+function backToList() {
+  state.selectedId = null
+  document.getElementById('view-detail').classList.remove('show')
+  document.getElementById('view-list').style.display = 'block'
+}
+
+function setTab(tab) {
+  state.activeTab = tab
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['open','closed','all'][i] === tab)
+  })
+  renderList()
+}
+
+function selectType(el) {
+  document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('active'))
+  el.classList.add('active')
+  state.pollType = el.dataset.type
+}
+
+function createPoll() {
+  const title = document.getElementById('f-title').value.trim()
+  const desc  = document.getElementById('f-desc').value.trim()
+  const rawOpts = document.getElementById('f-options').value.split('\n').map(o => o.trim()).filter(Boolean)
+  const days  = parseInt(document.getElementById('f-days').value) || 7
+
+  if (!title)           { toast('Question is required', 'var(--red)'); return }
+  if (rawOpts.length < 2) { toast('Need at least 2 options', 'var(--amber)'); return }
+
+  const poll = {
+    poll_id: crypto.randomUUID(),
+    title,
+    description: desc,
+    options: rawOpts.map((l, i) => ({ id: String(i), label: l })),
+    poll_type: state.pollType,
+    creator_pubkey: 'local-peer-hex',
+    ends_unix: nowSec() + days * 86400,
+    state: 'open',
+    votes: [],
+  }
+
+  state.polls.unshift(poll)
+  document.getElementById('f-title').value = ''
+  document.getElementById('f-desc').value = ''
+  document.getElementById('f-options').value = ''
+
+  renderList()
+  updateStats()
+  addLog(`Poll broadcast: "${title}"`, 'poll')
+  toast(`→ Poll broadcast to 0000tracvote`, 'var(--teal)')
+}
+
+// ─── Log & toast ──────────────────────────────────────────────────────────────
+function addLog(msg, type = 'net') {
+  const feed = document.getElementById('log-feed')
+  const t = new Date().toLocaleTimeString('en', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit' })
+  const div = document.createElement('div')
+  div.className = 'log-entry'
+  div.innerHTML = `<span class="log-t">${t}</span><span class="log-c-${type}">${msg}</span>`
+  feed.prepend(div)
+  while (feed.children.length > 60) feed.removeChild(feed.lastChild)
+}
+
+function toast(msg, color = 'var(--teal)') {
+  const area = document.getElementById('toast-area')
+  const el = document.createElement('div')
+  el.className = 'toast'
+  el.style.borderLeft = `4px solid ${color}`
+  el.textContent = msg
+  area.appendChild(el)
+  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateY(10px)'; el.style.transition='all 0.3s'; setTimeout(()=>el.remove(),300) }, 3200)
+}
+
+function updateStats() {
+  const open = state.polls.filter(p => p.state==='open' && p.ends_unix>nowSec()).length
+  const total = state.polls.reduce((s,p) => s + p.votes.length, 0)
+  document.getElementById('stat-open').textContent = open
+  document.getElementById('stat-votes').textContent = total
+  document.getElementById('n-polls').textContent = state.polls.length
+  document.getElementById('n-votes').textContent = total
+}
+
+// ─── Clock ────────────────────────────────────────────────────────────────────
+function tick() {
+  document.getElementById('clock').textContent = new Date().toUTCString().replace(' GMT','') + ' UTC'
+}
+tick(); setInterval(tick, 1000)
+
+// ─── Network simulation ───────────────────────────────────────────────────────
+function simulateNetwork() {
+  const events = [
+    () => { const p = Math.max(8, parseInt(document.getElementById('n-peers').textContent) + (Math.random()>.5?1:-1)); document.getElementById('n-peers').textContent=p; document.getElementById('stat-open').textContent; },
+    () => { addLog('Peer 4a3b…e2d1 joined 0000tracvote', 'net') },
+    () => { const poll = state.polls.find(p=>p.state==='open'&&p.ends_unix>nowSec()); if(poll){ poll.votes.push({voter_pubkey:`sim-${Math.random()}`,choices:[poll.options[0].id],ts:nowSec()}); addLog(`Incoming vote on "${poll.title.substring(0,28)}…"`, 'vote'); updateStats() } },
+    () => { addLog('Rebroadcast received: 0000tracvote', 'net') },
+    () => { addLog('DHT announce acknowledged', 'net') },
+  ]
+  const run = () => { events[Math.floor(Math.random()*events.length)](); setTimeout(run, 2500 + Math.random()*6000) }
+  setTimeout(run, 1500)
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderList()
+updateStats()
+simulateNetwork()
+
+setTimeout(() => addLog('Connected: Hyperswarm DHT', 'net'), 100)
+setTimeout(() => addLog('Joined: 0000tracvote', 'poll'), 400)
+setTimeout(() => addLog('Scanning for polls…', 'net'), 800)
+setTimeout(() => addLog(`Loaded ${state.polls.length} polls from peers`, 'poll'), 1300)
+</script>
+</body>
+</html>
